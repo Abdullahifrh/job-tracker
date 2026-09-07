@@ -1,0 +1,23 @@
+{
+  "id": "msg_glassdoor_004",
+  "payload": {
+    "mimeType": "text/plain",
+    "headers": [
+      {
+        "name": "From",
+        "value": "Glassdoor-vacatures <noreply@glassdoor.com>"
+      },
+      {
+        "name": "Subject",
+        "value": "Senior Machine Learning Engineer bij Good Company en nog 3 vacatures in Tilburg voor u. Solliciteer nu."
+      },
+      {
+        "name": "Date",
+        "value": "Thu, 03 Sep 2026 11:48:27 +0000"
+      }
+    ],
+    "body": {
+      "data": "QmVraWprIGRlemUgZW4gMyBhbmRlcmUgdmFjYXR1cmVzIGluIFRpbGJ1cmcuIFNvbGxpY2l0ZWVyIG51IG9wIEdsYXNzZG9vci4"
+    }
+  }
+}

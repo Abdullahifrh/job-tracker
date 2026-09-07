@@ -1,0 +1,13 @@
+credentials.json
+token.json
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+processed_ids.json
+github-deployer-key.json
+*-key.json
+.pytest_cache/
+.vscode/
+

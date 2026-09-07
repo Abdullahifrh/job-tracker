@@ -1,0 +1,23 @@
+{
+  "id": "msg_security_005",
+  "payload": {
+    "mimeType": "text/plain",
+    "headers": [
+      {
+        "name": "From",
+        "value": "Google <no-reply@accounts.google.com>"
+      },
+      {
+        "name": "Subject",
+        "value": "Security alert"
+      },
+      {
+        "name": "Date",
+        "value": "Thu, 03 Sep 2026 16:03:02 GMT"
+      }
+    ],
+    "body": {
+      "data": "V2Ugbm90aWNlZCBhIG5ldyBzaWduLWluIHRvIHlvdXIgR29vZ2xlIEFjY291bnQgb24gYSBXaW5kb3dzIGRldmljZS4gSWYgdGhpcyB3YXMgeW91LCB5b3UgZG9uJ3QgbmVlZCB0byBkbyBhbnl0aGluZy4"
+    }
+  }
+}

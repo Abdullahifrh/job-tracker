@@ -1,0 +1,23 @@
+{
+  "id": "msg_plain_001",
+  "payload": {
+    "mimeType": "text/plain",
+    "headers": [
+      {
+        "name": "From",
+        "value": "recruiting@acmecorp.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Thank you for applying to Acme Corp - Data Engineer"
+      },
+      {
+        "name": "Date",
+        "value": "Mon, 1 Sep 2026 09:00:00 +0200"
+      }
+    ],
+    "body": {
+      "data": "SGkgQWJkdWxsYWhpLAoKVGhhbmsgeW91IGZvciBhcHBseWluZyB0byB0aGUgRGF0YSBFbmdpbmVlciBwb3NpdGlvbiBhdCBBY21lIENvcnAuIE91ciB0ZWFtIGlzIHJldmlld2luZyB5b3VyIGFwcGxpY2F0aW9uIGFuZCB3aWxsIGZvbGxvdyB1cCBzb29uLgoKQmVzdCwKQWNtZSBSZWNydWl0aW5n"
+    }
+  }
+}

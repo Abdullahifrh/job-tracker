@@ -1,0 +1,34 @@
+{
+  "id": "msg_html_002",
+  "payload": {
+    "mimeType": "multipart/alternative",
+    "headers": [
+      {
+        "name": "From",
+        "value": "talent@globex.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Interview Invitation - Backend Engineer at Globex"
+      },
+      {
+        "name": "Date",
+        "value": "Tue, 2 Sep 2026 14:30:00 +0200"
+      }
+    ],
+    "parts": [
+      {
+        "mimeType": "text/plain",
+        "body": {
+          "data": "SGkgQWJkdWxsYWhpLAoKV2Ugd2VyZSBpbXByZXNzZWQgYnkgeW91ciBiYWNrZ3JvdW5kIGFuZCB3b3VsZCBsaWtlIHRvIGludml0ZSB5b3UgdG8gYW4gaW50ZXJ2aWV3IGZvciB0aGUgQmFja2VuZCBFbmdpbmVlciByb2xlIGF0IEdsb2JleC4KClJlZ2FyZHMsCkdsb2JleCBUYWxlbnQgVGVhbQ"
+        }
+      },
+      {
+        "mimeType": "text/html",
+        "body": {
+          "data": "PGh0bWw-PGJvZHk-PHA-SGkgQWJkdWxsYWhpLDwvcD48cD5XZSB3ZXJlIGltcHJlc3NlZCBieSB5b3VyIGJhY2tncm91bmQgYW5kIHdvdWxkIGxpa2UgdG8gaW52aXRlIHlvdSB0byBhbiA8Yj5pbnRlcnZpZXc8L2I-IGZvciB0aGUgQmFja2VuZCBFbmdpbmVlciByb2xlIGF0IEdsb2JleC48L3A-PHA-UmVnYXJkcyw8YnIvPkdsb2JleCBUYWxlbnQgVGVhbTwvcD48L2JvZHk-PC9odG1sPg"
+        }
+      }
+    ]
+  }
+}

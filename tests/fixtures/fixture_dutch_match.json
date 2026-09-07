@@ -1,0 +1,23 @@
+{
+  "id": "msg_dutch_006",
+  "payload": {
+    "mimeType": "text/plain",
+    "headers": [
+      {
+        "name": "From",
+        "value": "recruitment@axians.nl"
+      },
+      {
+        "name": "Subject",
+        "value": "Bedankt voor je sollicitatie bij Axians"
+      },
+      {
+        "name": "Date",
+        "value": "Fri, 04 Sep 2026 09:00:00 +0200"
+      }
+    ],
+    "body": {
+      "data": "QmVzdGUgQWJkdWxsYWhpLAoKQmVkYW5rdCB2b29yIGplIHNvbGxpY2l0YXRpZSBvcCBkZSBmdW5jdGllIERhdGEgJiBBSSBFbmdpbmVlciBiaWogQXhpYW5zLiBXZSBuZW1lbiBqZSBzb2xsaWNpdGF0aWUgem8gc25lbCBtb2dlbGlqayBpbiBiZWhhbmRlbGluZy4KCk1ldCB2cmllbmRlbGlqa2UgZ3JvZXQsCkF4aWFucyBSZWNydWl0bWVudA"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "msg_shipping_003",
+  "payload": {
+    "mimeType": "text/plain",
+    "headers": [
+      {
+        "name": "From",
+        "value": "shipment-tracking@example-store.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Your Example Store order has shipped"
+      },
+      {
+        "name": "Date",
+        "value": "Wed, 3 Sep 2026 11:15:00 +0200"
+      }
+    ],
+    "body": {
+      "data": "SGkgQWJkdWxsYWhpLAoKWW91ciBvcmRlciAjMTIzNDUgaGFzIHNoaXBwZWQgYW5kIGlzIG9uIGl0cyB3YXkuIFRyYWNrIHlvdXIgcGFja2FnZSB1c2luZyB0aGUgbGluayBiZWxvdy4KClRoYW5rcyBmb3Igc2hvcHBpbmcgd2l0aCB1cy4"
+    }
+  }
+}
