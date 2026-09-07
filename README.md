@@ -1,5 +1,12 @@
 # Job Application Tracker
 
+<p align="left">
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python&logoColor=white" alt="Python 3.12" />
+  <img src="https://img.shields.io/badge/Google_Cloud-Functions-4285F4?style=flat&logo=googlecloud&logoColor=white" alt="Google Cloud Functions" />
+  <img src="https://img.shields.io/badge/Gemini_API-886FBF?style=flat" alt="Gemini API" />
+  <img src="https://github.com/Abdullahifrh/job-tracker/actions/workflows/deploy.yml/badge.svg" alt="CI/CD Status" />
+</p>
+
 An automation that watches Gmail for job-application activity, uses an LLM to turn each relevant email into structured data and keeps a Google Sheet up to date automatically. No manual data entry for status changes needed.
 
 ## What it does
@@ -8,6 +15,17 @@ An automation that watches Gmail for job-application activity, uses an LLM to tu
 2. Passes each candidate email to an LLM, which classifies it (applied / interview scheduled / interviewed / offer / rejected / not relevant) and pulls out company, role, location and salary (but only at the offer stage).
 3. Matches the result against existing rows in a Google Sheet by normalized company name, updates the row in place if found, or creates a new one if not. Manually-added rows are never overwritten, only filled in where blank.
 4. Runs unattended as a scheduled, serverless Cloud Function, with structured logging, retry-with-backoff on transient API failures and an email alert to yourself if a run fails outright.
+
+## Sample output
+
+Purely for illustration purposes (only a portion of the actual columns shown): the values below use the same fake company names as the test suite (`tests/test_extractor.py`, `tests/fixtures/`), not real data:
+
+| Company | Job Title | Status | Last Updated |
+|---|---|---|---|
+| Acme Corp | Data Engineer | Applied | 2026-08-14 |
+| Globex | Backend Engineer | Interview Scheduled | 2026-08-20 |
+| Bluepeak Systems | Data Engineer | Offer | 2026-08-29 |
+| Solace Dynamics | Backend Engineer | Rejected | 2026-08-22 |
 
 ## Architecture
 
