@@ -1,18 +1,15 @@
 import json
 from pathlib import Path
 from unittest.mock import patch
-
 import pytest
-
+import src.extractor as extractor_module
 from src.extractor import extract_application, needs_review
 from src.gmail_client import parse_message
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
-
 def load_fixture(name: str) -> dict:
     return parse_message(json.loads((FIXTURES_DIR / name).read_text()))
-
 
 SAMPLE_EMAILS = {
     "greenhouse_applied": {
@@ -181,11 +178,9 @@ FIXTURE_EMAILS = {
 
 ALL_EMAILS = {**SAMPLE_EMAILS, **FIXTURE_EMAILS}
 
-
 @pytest.fixture(autouse=True)
 def gemini_key(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-
 
 @pytest.mark.parametrize("name", ALL_EMAILS.keys())
 def test_extraction_matches_expected_status(name):
@@ -195,12 +190,10 @@ def test_extraction_matches_expected_status(name):
     assert result.status == MOCKED_RESPONSES[name]["status"]
     assert result.company == MOCKED_RESPONSES[name]["company"]
 
-
 def test_all_real_statuses_are_covered():
     statuses = {r["status"] for r in MOCKED_RESPONSES.values()}
     expected = {"applied", "interview_scheduled", "interviewed", "offer", "rejected"}
     assert expected <= statuses
-
 
 def test_offer_carries_location_and_salary():
     with patch("src.extractor._call_gemini", return_value=MOCKED_RESPONSES["recruiter_offer"]):
@@ -209,13 +202,11 @@ def test_offer_carries_location_and_salary():
     assert result.location == "Rotterdam"
     assert result.salary == "EUR 62,000"
 
-
 def test_non_offer_status_has_no_salary():
     with patch("src.extractor._call_gemini", return_value=MOCKED_RESPONSES["greenhouse_applied"]):
         result = extract_application(SAMPLE_EMAILS["greenhouse_applied"])
 
     assert result.salary is None
-
 
 def test_low_confidence_flagged_for_review():
     with patch("src.extractor._call_gemini", return_value=MOCKED_RESPONSES["linkedin_cold_outreach"]):
@@ -223,9 +214,28 @@ def test_low_confidence_flagged_for_review():
 
     assert needs_review(result)
 
-
 def test_high_confidence_real_update_not_flagged():
     with patch("src.extractor._call_gemini", return_value=MOCKED_RESPONSES["workday_interview"]):
         result = extract_application(SAMPLE_EMAILS["workday_interview"])
 
     assert not needs_review(result)
+
+def test_throttle_sleeps_to_maintain_minimum_spacing(monkeypatch):
+    extractor_module._last_gemini_call_at = 100.0
+    monkeypatch.setattr(extractor_module.time, "monotonic", lambda: 105.0)
+    sleep_calls = []
+    monkeypatch.setattr(extractor_module.time, "sleep", lambda s: sleep_calls.append(s))
+
+    extractor_module._throttle_gemini_calls()
+
+    assert sleep_calls == [extractor_module.MIN_SECONDS_BETWEEN_GEMINI_CALLS - 5]
+
+def test_throttle_does_not_sleep_when_spacing_already_sufficient(monkeypatch):
+    extractor_module._last_gemini_call_at = 0.0
+    monkeypatch.setattr(extractor_module.time, "monotonic", lambda: 1000.0)
+    sleep_calls = []
+    monkeypatch.setattr(extractor_module.time, "sleep", lambda s: sleep_calls.append(s))
+
+    extractor_module._throttle_gemini_calls()
+
+    assert sleep_calls == []
