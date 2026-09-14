@@ -67,3 +67,28 @@ def test_dutch_application_confirmation_matches():
     parsed = parse_message(load_fixture("fixture_dutch_match.json"))
 
     assert is_likely_job_email(parsed["subject"], parsed["body_text"], parsed["from"])
+
+def test_rejection_with_nonstandard_phrasing_matches_via_your_application():
+    # Real-world rejections don't reliably use any single fixed phrase — this
+    # wording deliberately avoids every other keyword in the list, matching
+    # only on "your application".
+    subject = "Your application - Data Scientist role"
+    body = (
+        "Thank you for the time you invested in this process. "
+        "We have decided to not proceed with your application at this time, "
+        "as other candidates better match our current requirements."
+    )
+
+    assert is_likely_job_email(subject, body)
+
+def test_dutch_confirmation_with_split_phrasing_matches_via_jouw_sollicitatie():
+    # "sollicitatie ontvangen" as an adjacent phrase won't appear here since
+    # the sentence structure separates the two words — this only matches
+    # because of the broader "jouw sollicitatie" addition.
+    subject = "Betreft: Jouw sollicitatie naar de functie van Analytics Engineer"
+    body = (
+        "Wij hebben jouw sollicitatie naar de functie van Analytics Engineer "
+        "in goede orde ontvangen, hiervoor dank."
+    )
+
+    assert is_likely_job_email(subject, body)

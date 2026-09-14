@@ -5,7 +5,6 @@ import logging
 import re
 from email.utils import parseaddr
 from pathlib import Path
-
 from src.retry import retry_with_backoff
 
 logger = logging.getLogger(__name__)
@@ -24,7 +23,7 @@ JOB_KEYWORDS = [
     "take-home assignment", "next steps in your application",
     "unfortunately, we have decided", "not moving forward with your application",
     "we have decided to move forward with other candidates",
-    "offer letter", "pleased to offer you",
+    "offer letter", "pleased to offer you", "your application",
     "bedankt voor je sollicitatie", "bedankt voor jouw sollicitatie",
     "ontvangstbevestiging sollicitatie", "sollicitatie ontvangen",
     "status van je sollicitatie", "update over je sollicitatie",
@@ -32,6 +31,7 @@ JOB_KEYWORDS = [
     "vervolgstap in je sollicitatie", "assessment uitnodiging",
     "helaas moeten we je informeren", "afwijzing sollicitatie",
     "we gaan niet verder met je sollicitatie", "aanbod voor de functie",
+    "jouw sollicitatie", "je sollicitatie", "uw sollicitatie",
 ]
 
 # Phrases used in mail you send yourself — an open application or a

@@ -18,7 +18,7 @@ An automation that watches Gmail for job-application activity, uses an LLM to tu
 
 ## Sample output
 
-Purely for illustration purposes (only a portion of the actual columns shown): the values below use the same fake company names as the test suite (`tests/test_extractor.py`, `tests/fixtures/`), not real data:
+Illustrative only — the values below use the same fake company names as the test suite (`tests/test_extractor.py`, `tests/fixtures/`), not real data:
 
 | Company | Job Title | Status | Last Updated |
 |---|---|---|---|
@@ -73,6 +73,6 @@ Cloud Function (Python, gen2)
 
 ## Known Limitations
 
-- The keyword pre-filter is intentionally broad; the LLM extraction step is the actual classifier.
+- The keyword pre-filter (used in both the Gmail search query and the local re-check) is a real limitation, not just noise-reduction: real-world phrasing varies enough that some genuine application emails won't match any listed phrase and are silently never fetched at all, before the LLM ever gets a chance to classify them. The list is expanded as real misses surface rather than pretending to be exhaustive.
 - Ambiguous company/role matches are skipped and logged rather than resolved automatically.
 - OAuth refresh tokens can be invalidated independently of this code; authentication failures should be checked here first.

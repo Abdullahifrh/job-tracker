@@ -23,7 +23,8 @@ def run_pipeline() -> dict:
     spreadsheet_id = os.environ["TRACKER_SHEET_ID"]
 
     processed = load_processed_ids(sheets_service, spreadsheet_id)
-    emails, seen_ids = fetch_new_matching_emails(gmail_service, processed, days=7)
+    search_days = int(os.environ.get("SEARCH_WINDOW_DAYS", "7"))
+    emails, seen_ids = fetch_new_matching_emails(gmail_service, processed, days=search_days)
 
     for email in emails:
         extraction = extract_application(email)

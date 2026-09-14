@@ -1,6 +1,7 @@
 import logging
 import re
 from datetime import date
+from email.utils import parsedate_to_datetime
 from googleapiclient.discovery import build
 from src.extractor import needs_review
 from src.retry import retry_with_backoff
@@ -50,6 +51,13 @@ _COMPANY_SUFFIXES = {"bv", "nv", "inc", "llc", "ltd", "corp", "corporation", "gm
 
 def get_sheets_service(creds):
     return build("sheets", "v4", credentials=creds)
+
+def _parse_email_date(raw_date: str) -> str:
+    """Best-effort conversion of an RFC 2822 email header date into clean ISO format."""
+    try:
+        return parsedate_to_datetime(raw_date).date().isoformat()
+    except (TypeError, ValueError):
+        return raw_date
 
 def normalize_company_name(name: str) -> str:
     cleaned = re.sub(r"[^\w\s]", "", name.lower().strip())
@@ -101,18 +109,19 @@ def read_tracker_rows(service, spreadsheet_id: str) -> list[dict]:
     return [_row_to_dict(i + 2, row) for i, row in enumerate(rows) if any(row)]
 
 def append_tracker_row(service, spreadsheet_id: str, record: dict) -> None:
+    """Deliberately not retried: values().append() is not idempotent, and retrying an
+    ambiguous failure (write succeeded, response lost) would create a duplicate row.
+    A failed append raises and fails the run; the same email gets safely reprocessed
+    on the next scheduled run instead, since upsert matching is itself idempotent.
+    """
     body = {"values": [_dict_to_row(record)]}
+    service.spreadsheets().values().append(
+        spreadsheetId=spreadsheet_id,
+        range=f"{TRACKER_SHEET_NAME}!A:J",
+        valueInputOption="USER_ENTERED",
+        body=body,
+    ).execute()
 
-    @retry_with_backoff()
-    def _append() -> None:
-        service.spreadsheets().values().append(
-            spreadsheetId=spreadsheet_id,
-            range=f"{TRACKER_SHEET_NAME}!A:J",
-            valueInputOption="USER_ENTERED",
-            body=body,
-        ).execute()
-
-    _append()
     logger.info("Appended new row: %s | %s", record.get("company"), record.get("job_title"))
 
 def update_tracker_row(service, spreadsheet_id: str, row_index: int, record: dict) -> None:
@@ -140,22 +149,19 @@ def load_processed_ids(service, spreadsheet_id: str) -> set[str]:
     return {row[0] for row in _get().get("values", []) if row}
 
 def save_processed_ids(service, spreadsheet_id: str, new_ids: list[str]) -> None:
+    """Deliberately not retried, for the same reason as append_tracker_row: append is
+    not idempotent, and retrying risks writing the same message ID twice."""
     if not new_ids:
         return
 
     today = date.today().isoformat()
     body = {"values": [[message_id, today] for message_id in new_ids]}
-
-    @retry_with_backoff()
-    def _append() -> None:
-        service.spreadsheets().values().append(
-            spreadsheetId=spreadsheet_id,
-            range=f"{PROCESSED_IDS_SHEET_NAME}!A:B",
-            valueInputOption="USER_ENTERED",
-            body=body,
-        ).execute()
-
-    _append()
+    service.spreadsheets().values().append(
+        spreadsheetId=spreadsheet_id,
+        range=f"{PROCESSED_IDS_SHEET_NAME}!A:B",
+        valueInputOption="USER_ENTERED",
+        body=body,
+    ).execute()
 
 def upsert_application(service, spreadsheet_id: str, parsed_email: dict, extraction) -> None:
     """Create or update one Tracker row from a single extracted email, never overwriting fields already filled in."""
@@ -175,7 +181,7 @@ def upsert_application(service, spreadsheet_id: str, parsed_email: dict, extract
 
     source = "open_application" if parsed_email["is_outbound"] else "applied_via_posting"
     note_suffix = " (auto-reply acknowledgment)" if parsed_email.get("is_auto_reply") else ""
-    fallback_date = extraction.event_date.isoformat() if extraction.event_date else parsed_email["date"]
+    fallback_date = extraction.event_date.isoformat() if extraction.event_date else _parse_email_date(parsed_email["date"])
 
     if not matches:
         new_row = {

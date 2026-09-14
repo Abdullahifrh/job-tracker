@@ -3,9 +3,12 @@ from unittest.mock import MagicMock
 from src.extractor import ExtractedApplication
 from src.sheets_client import (
     _is_forward_progress,
+    _parse_email_date,
     _role_similarity,
+    append_tracker_row,
     flag_stale_applications,
     normalize_company_name,
+    save_processed_ids,
     upsert_application,
 )
 
@@ -159,3 +162,50 @@ def test_stale_applied_row_flagged_no_reply():
     assert flipped == 1
     updated_row = values.update.call_args.kwargs["body"]["values"][0]
     assert updated_row[5] == "No Reply"
+
+def test_parse_email_date_converts_rfc2822_to_iso():
+    assert _parse_email_date("Wed, 9 Sep 2026 08:58:46 +0000") == "2026-09-09"
+
+def test_parse_email_date_falls_back_on_unparseable_input():
+    assert _parse_email_date("not a real date") == "not a real date"
+
+def test_new_row_date_applied_is_clean_iso_even_without_extracted_event_date():
+    service, values = _mock_sheets_service([])
+
+    extraction = _extraction(event_date=None)
+    email = _parsed_email(date="Wed, 9 Sep 2026 08:58:46 +0000")
+    upsert_application(service, "sheet123", email, extraction)
+
+    new_row = values.append.call_args.kwargs["body"]["values"][0]
+    assert new_row[2] == "2026-09-09"
+
+def test_append_tracker_row_does_not_retry_on_failure():
+    service = MagicMock()
+    values = service.spreadsheets.return_value.values.return_value
+    values.append.return_value.execute.side_effect = Exception("transient network error")
+    record = {
+        "company": "Acme Corp", "job_title": "", "date_applied": "", "location": "",
+        "salary": "", "status": "applied", "contact": "", "source": "",
+        "last_updated": "", "notes": "",
+    }
+
+    try:
+        append_tracker_row(service, "sheet123", record)
+        assert False, "expected the exception to propagate"
+    except Exception:
+        pass
+
+    assert values.append.call_count == 1
+
+def test_save_processed_ids_does_not_retry_on_failure():
+    service = MagicMock()
+    values = service.spreadsheets.return_value.values.return_value
+    values.append.return_value.execute.side_effect = Exception("transient network error")
+
+    try:
+        save_processed_ids(service, "sheet123", ["msg1"])
+        assert False, "expected the exception to propagate"
+    except Exception:
+        pass
+
+    assert values.append.call_count == 1
