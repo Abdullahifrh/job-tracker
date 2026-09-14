@@ -5,7 +5,7 @@ import time
 from datetime import date
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from src.retry import retry_with_backoff
 
@@ -32,6 +32,8 @@ Also extract, only when explicitly stated in the text:
 Return ONLY a JSON object, no markdown fences, no extra text, matching exactly:
 {"company": string, "role": string, "status": one of the values above, "event_date": "YYYY-MM-DD" or null, "location": string or null, "salary": string or null, "confidence": float between 0 and 1}
 
+If the company or role genuinely cannot be identified from the text, use the string "Unknown" for that field — never return null for company or role.
+
 If you are not confident this is a genuine update on a specific application, set status to "other" and confidence below 0.5.
 """
 
@@ -52,6 +54,14 @@ class ExtractedApplication(BaseModel):
     location: Optional[str] = None
     salary: Optional[str] = None
     confidence: float = Field(ge=0.0, le=1.0)
+
+    @field_validator("company", "role", mode="before")
+    @classmethod
+    def _default_missing_identity_fields(cls, value):
+        # A prompt instruction is a strong hint, not a guarantee against a
+        # non-deterministic model — this is the safety net for the exact
+        # failure that broke the pipeline when null slipped through anyway.
+        return value if value else "Unknown"
 
 def needs_review(extraction: ExtractedApplication) -> bool:
     return extraction.confidence < CONFIDENCE_THRESHOLD or extraction.status == "other"

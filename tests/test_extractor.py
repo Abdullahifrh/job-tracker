@@ -6,7 +6,7 @@ import pytest
 
 import src.extractor as extractor_module
 
-from src.extractor import extract_application, needs_review
+from src.extractor import ExtractedApplication, extract_application, needs_review
 from src.gmail_client import parse_message
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -289,3 +289,20 @@ def test_call_gemini_defaults_to_known_model_when_env_var_unset(monkeypatch):
         extractor_module._call_gemini(SAMPLE_EMAILS["greenhouse_applied"])
 
     mock_model_cls.assert_called_once_with(extractor_module.DEFAULT_GEMINI_MODEL)
+
+def test_null_company_and_role_default_to_unknown_instead_of_crashing():
+    result = ExtractedApplication.model_validate({
+        "company": None, "role": None, "status": "other",
+        "event_date": None, "location": None, "salary": None, "confidence": 0.2,
+    })
+
+    assert result.company == "Unknown"
+    assert result.role == "Unknown"
+
+def test_empty_string_company_also_defaults_to_unknown():
+    result = ExtractedApplication.model_validate({
+        "company": "", "role": "Data Engineer", "status": "applied",
+        "event_date": None, "location": None, "salary": None, "confidence": 0.8,
+    })
+
+    assert result.company == "Unknown"
