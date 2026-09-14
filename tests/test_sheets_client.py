@@ -57,6 +57,15 @@ def test_rejected_always_allowed():
     assert _is_forward_progress("interview_scheduled", "rejected")
     assert _is_forward_progress("applied", "rejected")
 
+def test_rejected_is_terminal_and_cannot_be_overwritten():
+    assert not _is_forward_progress("rejected", "applied")
+    assert not _is_forward_progress("rejected", "interview_scheduled")
+    assert not _is_forward_progress("rejected", "interviewed")
+    assert not _is_forward_progress("rejected", "offer")
+
+def test_rejected_to_rejected_is_a_harmless_noop():
+    assert _is_forward_progress("rejected", "rejected")
+
 def test_new_company_appends_a_row():
     service, values = _mock_sheets_service([])
 
@@ -127,6 +136,16 @@ def test_manual_row_not_overwritten_with_duplicate():
 
     values.append.assert_not_called()
     values.update.assert_called_once()
+
+def test_rejected_row_is_never_reverted_by_a_later_applied_reprocess():
+    existing = [["Haskoning", "Junior Data Scientist", "2026-09-09", "", "", "Rejected", "", "", "2026-09-10", ""]]
+    service, values = _mock_sheets_service(existing)
+
+    extraction = _extraction(company="Haskoning", role="Junior Data Scientist", status="applied")
+    upsert_application(service, "sheet123", _parsed_email(), extraction)
+
+    values.update.assert_not_called()
+    values.append.assert_not_called()
 
 def test_ambiguous_multiple_matches_skips_write(caplog):
     existing = [

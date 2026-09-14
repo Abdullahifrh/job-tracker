@@ -77,6 +77,12 @@ def _role_similarity(a: str, b: str) -> float:
     return len(tokens_a & tokens_b) / len(tokens_a | tokens_b)
 
 def _is_forward_progress(current_status: str, new_status: str) -> bool:
+    # Rejected is terminal: nothing should ever move a row away from it once
+    # set, only another rejection classification (a harmless no-op rewrite).
+    # STATUS_RANK has no "rejected" entry, so without this check the .get(...,
+    # 0) default below would silently let any other status overwrite it.
+    if current_status == "rejected":
+        return new_status == "rejected"
     if new_status == "rejected":
         return True
     if current_status in ("", "not_started"):
