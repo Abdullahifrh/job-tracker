@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+
 from src.gmail_client import is_likely_job_email, parse_message
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"

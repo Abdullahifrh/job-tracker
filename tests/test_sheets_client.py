@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 from unittest.mock import MagicMock
+
 from src.extractor import ExtractedApplication
 from src.sheets_client import (
     _is_forward_progress,

@@ -4,7 +4,9 @@ import os
 import time
 from datetime import date
 from typing import Literal, Optional
+
 from pydantic import BaseModel, Field
+
 from src.retry import retry_with_backoff
 
 logger = logging.getLogger(__name__)
@@ -33,6 +35,15 @@ Return ONLY a JSON object, no markdown fences, no extra text, matching exactly:
 If you are not confident this is a genuine update on a specific application, set status to "other" and confidence below 0.5.
 """
 
+DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
+
+# Free-tier RPM varies a lot by model (5 for plain Flash, 15 for Flash Lite,
+# as of this writing) and has already changed under us once. Read at call
+# time, not import time, so both the model and this interval can be swapped
+# via env vars without a code edit if the quotas shift again later.
+DEFAULT_MIN_SECONDS_BETWEEN_GEMINI_CALLS = 5.0
+_last_gemini_call_at = 0.0
+
 class ExtractedApplication(BaseModel):
     company: str
     role: str
@@ -60,17 +71,12 @@ def _parse_json_response(text: str) -> dict:
 
     return json.loads(cleaned)
 
-# The Gemini free tier caps generate_content at 5 requests/minute per project.
-# Proactively spacing calls at least this far apart keeps a normal run under
-# that ceiling instead of relying purely on reactive retries after a 429.
-MIN_SECONDS_BETWEEN_GEMINI_CALLS = 13
-_last_gemini_call_at = 0.0
-
 def _throttle_gemini_calls() -> None:
     global _last_gemini_call_at
+    min_seconds = float(os.environ.get("GEMINI_MIN_SECONDS_BETWEEN_CALLS", DEFAULT_MIN_SECONDS_BETWEEN_GEMINI_CALLS))
     elapsed = time.monotonic() - _last_gemini_call_at
-    if elapsed < MIN_SECONDS_BETWEEN_GEMINI_CALLS:
-        time.sleep(MIN_SECONDS_BETWEEN_GEMINI_CALLS - elapsed)
+    if elapsed < min_seconds:
+        time.sleep(min_seconds - elapsed)
     _last_gemini_call_at = time.monotonic()
 
 def _call_gemini(parsed_email: dict) -> dict:
@@ -78,12 +84,13 @@ def _call_gemini(parsed_email: dict) -> dict:
 
     _throttle_gemini_calls()
     genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-    model = genai.GenerativeModel("gemini-3.6-flash")
+    model = genai.GenerativeModel(os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL))
 
-    # Free-tier 429s ask for ~40s before retrying — a fast generic backoff
-    # just burns through the attempt budget without ever waiting long enough
-    # to actually recover, so this call gets its own, much more patient one.
-    @retry_with_backoff(max_attempts=4, base_delay=15.0)
+    # A 429 here still gets a real, patient backoff rather than a fast retry
+    # that just burns more of the same limited budget — scaled down from
+    # earlier since Flash Lite's much higher RPM makes a 429 less likely and
+    # less costly to wait out than it was on the old 5 RPM model.
+    @retry_with_backoff(max_attempts=4, base_delay=5.0)
     def _generate():
         return model.generate_content(
             [EXTRACTION_PROMPT, _build_user_content(parsed_email)],

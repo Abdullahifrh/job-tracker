@@ -1,4 +1,7 @@
 from unittest.mock import MagicMock, patch
+
+from google.auth.exceptions import RefreshError
+
 from main import handle_request
 
 def test_handle_request_returns_pipeline_summary_as_json():
@@ -28,3 +31,14 @@ def test_handle_request_returns_500_even_if_alert_itself_fails():
         body, status, headers = handle_request(None)
 
     assert status == 500
+
+def test_handle_request_skips_alert_attempt_on_auth_failure():
+    auth_error = RefreshError("invalid_grant: Token has been expired or revoked.")
+
+    with patch("main.run_pipeline", side_effect=auth_error), \
+         patch("main.send_failure_alert") as mock_alert:
+        body, status, headers = handle_request(None)
+
+    assert status == 500
+    assert "invalid_grant" in body
+    mock_alert.assert_not_called()

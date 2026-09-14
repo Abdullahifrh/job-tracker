@@ -1,8 +1,11 @@
 import json
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
 import pytest
+
 import src.extractor as extractor_module
+
 from src.extractor import extract_application, needs_review
 from src.gmail_client import parse_message
 
@@ -222,13 +225,13 @@ def test_high_confidence_real_update_not_flagged():
 
 def test_throttle_sleeps_to_maintain_minimum_spacing(monkeypatch):
     extractor_module._last_gemini_call_at = 100.0
-    monkeypatch.setattr(extractor_module.time, "monotonic", lambda: 105.0)
+    monkeypatch.setattr(extractor_module.time, "monotonic", lambda: 102.0)
     sleep_calls = []
     monkeypatch.setattr(extractor_module.time, "sleep", lambda s: sleep_calls.append(s))
 
     extractor_module._throttle_gemini_calls()
 
-    assert sleep_calls == [extractor_module.MIN_SECONDS_BETWEEN_GEMINI_CALLS - 5]
+    assert sleep_calls == [extractor_module.DEFAULT_MIN_SECONDS_BETWEEN_GEMINI_CALLS - 2]
 
 def test_throttle_does_not_sleep_when_spacing_already_sufficient(monkeypatch):
     extractor_module._last_gemini_call_at = 0.0
@@ -239,3 +242,50 @@ def test_throttle_does_not_sleep_when_spacing_already_sufficient(monkeypatch):
     extractor_module._throttle_gemini_calls()
 
     assert sleep_calls == []
+
+def test_throttle_interval_is_configurable_via_env_var(monkeypatch):
+    monkeypatch.setenv("GEMINI_MIN_SECONDS_BETWEEN_CALLS", "20")
+    extractor_module._last_gemini_call_at = 100.0
+    monkeypatch.setattr(extractor_module.time, "monotonic", lambda: 105.0)
+    sleep_calls = []
+    monkeypatch.setattr(extractor_module.time, "sleep", lambda s: sleep_calls.append(s))
+
+    extractor_module._throttle_gemini_calls()
+
+    assert sleep_calls == [15.0]
+
+def test_call_gemini_uses_configured_model_env_var(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-flash-lite-test")
+    monkeypatch.setattr(extractor_module, "_throttle_gemini_calls", lambda: None)
+
+    fake_response = MagicMock()
+    fake_response.text = (
+        '{"company": "Acme", "role": "Engineer", "status": "applied", '
+        '"event_date": null, "location": null, "salary": null, "confidence": 0.9}'
+    )
+
+    with patch("google.generativeai.configure"), \
+         patch("google.generativeai.GenerativeModel") as mock_model_cls:
+        mock_model_cls.return_value.generate_content.return_value = fake_response
+        extractor_module._call_gemini(SAMPLE_EMAILS["greenhouse_applied"])
+
+    mock_model_cls.assert_called_once_with("gemini-flash-lite-test")
+
+def test_call_gemini_defaults_to_known_model_when_env_var_unset(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
+    monkeypatch.setattr(extractor_module, "_throttle_gemini_calls", lambda: None)
+
+    fake_response = MagicMock()
+    fake_response.text = (
+        '{"company": "Acme", "role": "Engineer", "status": "applied", '
+        '"event_date": null, "location": null, "salary": null, "confidence": 0.9}'
+    )
+
+    with patch("google.generativeai.configure"), \
+         patch("google.generativeai.GenerativeModel") as mock_model_cls:
+        mock_model_cls.return_value.generate_content.return_value = fake_response
+        extractor_module._call_gemini(SAMPLE_EMAILS["greenhouse_applied"])
+
+    mock_model_cls.assert_called_once_with(extractor_module.DEFAULT_GEMINI_MODEL)

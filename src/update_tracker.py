@@ -1,7 +1,9 @@
 import logging
 import os
+
 from dotenv import load_dotenv
 from googleapiclient.discovery import build
+
 from src.auth import get_credentials
 from src.extractor import extract_application
 from src.gmail_client import fetch_new_matching_emails
@@ -26,11 +28,19 @@ def run_pipeline() -> dict:
     search_days = int(os.environ.get("SEARCH_WINDOW_DAYS", "7"))
     emails, seen_ids = fetch_new_matching_emails(gmail_service, processed, days=search_days)
 
+    extracted_ids = []
     for email in emails:
         extraction = extract_application(email)
         upsert_application(sheets_service, spreadsheet_id, email, extraction)
+        extracted_ids.append(email["message_id"])
+        # Saved immediately, not batched at the end: if a later email in this
+        # same run fails (e.g. a quota exhaustion), work already done here
+        # doesn't get silently redone — and its Gemini quota re-spent — on
+        # the next run.
+        save_processed_ids(sheets_service, spreadsheet_id, [email["message_id"]])
 
-    save_processed_ids(sheets_service, spreadsheet_id, seen_ids)
+    non_extracted_ids = [mid for mid in seen_ids if mid not in extracted_ids]
+    save_processed_ids(sheets_service, spreadsheet_id, non_extracted_ids)
     flipped = flag_stale_applications(sheets_service, spreadsheet_id)
 
     return {

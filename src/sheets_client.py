@@ -2,7 +2,9 @@ import logging
 import re
 from datetime import date
 from email.utils import parsedate_to_datetime
+
 from googleapiclient.discovery import build
+
 from src.extractor import needs_review
 from src.retry import retry_with_backoff
 
@@ -46,7 +48,9 @@ STATUS_COLORS = {
 }
 
 SOURCE_DISPLAY = {"applied_via_posting": "Applied via Posting", "open_application": "Open Application"}
+
 STALE_APPLIED_DAYS = 21
+
 _COMPANY_SUFFIXES = {"bv", "nv", "inc", "llc", "ltd", "corp", "corporation", "gmbh", "co", "company"}
 
 def get_sheets_service(creds):
