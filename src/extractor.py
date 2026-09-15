@@ -22,15 +22,17 @@ Classify it into exactly one status:
 - interview_scheduled: invites, offers, or schedules an interview or an online assessment that has not yet happened
 - interviewed: refers to an interview or assessment that has already taken place (past tense, thanking the candidate for their time)
 - offer: a job offer was extended
-- rejected: the application was declined
+- rejected: the application was declined. This includes soft or hedged phrasing — "we've decided not to move forward with your application", "not the right match at this time", "we'll keep your profile on file for future opportunities" — these are still rejections even when wrapped in encouraging or relationship-preserving language. Don't let a warm tone override a clear decline.
 - other: anything that is not a direct update on a specific application (job board digests, cold recruiter outreach, unrelated mail)
 
 Also extract, only when explicitly stated in the text:
-- location: a specific city or country for the role. Leave null if not stated.
+- location: the city only, never the country. If a city is named (even alongside a country, e.g. "Amsterdam, the Netherlands"), extract just the city ("Amsterdam"). If only a country is given with no specific city, leave this null.
 - salary: a figure or range. Only fill this in if status is "offer" and a number is actually given — never guess or infer a salary otherwise.
 
 Return ONLY a JSON object, no markdown fences, no extra text, matching exactly:
 {"company": string, "role": string, "status": one of the values above, "event_date": "YYYY-MM-DD" or null, "location": string or null, "salary": string or null, "confidence": float between 0 and 1}
+
+Read the email body carefully before deciding on company and role. Job titles and company names are usually stated plainly in a single sentence — "your interest in the position of Junior Data Scientist", "your application for the Marketing Coordinator role at Acme Corp". Use "Unknown" only as a genuine last resort when the text truly gives no indication, never because the answer takes a moment to locate.
 
 If the company or role genuinely cannot be identified from the text, use the string "Unknown" for that field — never return null for company or role.
 
