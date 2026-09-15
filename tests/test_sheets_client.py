@@ -131,7 +131,7 @@ def test_manual_row_not_overwritten_with_duplicate():
     existing = [["Serenity Healthcare", "Marketing Coordinator", "2026-08-08", "", "", "Not Started", "", "", "", ""]]
     service, values = _mock_sheets_service(existing)
 
-    extraction = _extraction(company="Serenity Healthcare", role="Coordinator", status="applied")
+    extraction = _extraction(company="Serenity Healthcare", role="Marketing Coordinator", status="applied")
     upsert_application(service, "sheet123", _parsed_email(), extraction)
 
     values.append.assert_not_called()
@@ -147,20 +147,59 @@ def test_rejected_row_is_never_reverted_by_a_later_applied_reprocess():
     values.update.assert_not_called()
     values.append.assert_not_called()
 
+def test_different_role_at_same_company_creates_new_row_not_a_merge():
+    # This is the exact real-world case that motivated this fix: two
+    # genuinely different applications to the same company should never
+    # collapse into one row just because the company matched.
+    existing = [["Capgemini", "Junior Data Scientist", "2026-09-14", "Utrecht", "", "Applied", "", "", "2026-09-14", ""]]
+    service, values = _mock_sheets_service(existing)
+
+    extraction = _extraction(company="Capgemini", role="Junior Data Engineer", status="applied")
+    upsert_application(service, "sheet123", _parsed_email(), extraction)
+
+    values.append.assert_called_once()
+    values.update.assert_not_called()
+
+def test_reworded_but_same_role_still_matches_and_updates():
+    existing = [["Acme Corp", "Data Engineer", "2026-08-01", "", "", "Applied", "", "", "2026-08-01", ""]]
+    service, values = _mock_sheets_service(existing)
+
+    extraction = _extraction(company="Acme Corp", role="Senior Data Engineer", status="interview_scheduled")
+    upsert_application(service, "sheet123", _parsed_email(), extraction)
+
+    values.append.assert_not_called()
+    values.update.assert_called_once()
+
 def test_ambiguous_multiple_matches_skips_write(caplog):
     existing = [
-        ["Acme Corp", "Data Engineer", "", "", "", "Applied", "", "", "2026-08-01", ""],
-        ["Acme Corp", "Marketing Manager", "", "", "", "Applied", "", "", "2026-08-01", ""],
+        ["Acme Corp", "Senior Data Engineer", "", "", "", "Applied", "", "", "2026-08-01", ""],
+        ["Acme Corp", "Data Engineer Manager", "", "", "", "Applied", "", "", "2026-08-01", ""],
     ]
     service, values = _mock_sheets_service(existing)
 
-    extraction = _extraction(company="Acme Corp", role="Something Else Entirely", status="interview_scheduled")
+    extraction = _extraction(company="Acme Corp", role="Data Engineer", status="interview_scheduled")
     with caplog.at_level("WARNING"):
         upsert_application(service, "sheet123", _parsed_email(), extraction)
 
     values.append.assert_not_called()
     values.update.assert_not_called()
     assert "Ambiguous" in caplog.text
+
+def test_role_matching_neither_existing_entry_creates_a_new_row():
+    # Two existing applications at Acme Corp, neither resembling this role —
+    # this is a third, genuinely distinct application, not an update to
+    # either one, so it should append rather than silently drop.
+    existing = [
+        ["Acme Corp", "Data Engineer", "", "", "", "Applied", "", "", "2026-08-01", ""],
+        ["Acme Corp", "Marketing Manager", "", "", "", "Applied", "", "", "2026-08-01", ""],
+    ]
+    service, values = _mock_sheets_service(existing)
+
+    extraction = _extraction(company="Acme Corp", role="Legal Counsel", status="applied")
+    upsert_application(service, "sheet123", _parsed_email(), extraction)
+
+    values.append.assert_called_once()
+    values.update.assert_not_called()
 
 def test_stale_rejection_never_flagged_no_reply():
     old_date = (date.today() - timedelta(days=40)).isoformat()

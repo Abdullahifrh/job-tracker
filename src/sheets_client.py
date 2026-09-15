@@ -25,6 +25,12 @@ HEADER_LABELS = [
 
 STATUS_RANK = {"applied": 1, "interview_scheduled": 2, "interviewed": 3, "offer": 4}
 
+# "Data Scientist" vs "Data Engineer" scores 0.5 on the token-overlap check
+# below (they share "Data" but differ on the actual specialization) — the
+# threshold is deliberately set above that so genuinely different roles at
+# the same company create separate rows instead of merging.
+ROLE_MATCH_THRESHOLD = 0.5
+
 STATUS_DISPLAY = {
     "not_started": "Not Started",
     "applied": "Applied",
@@ -51,7 +57,7 @@ SOURCE_DISPLAY = {"applied_via_posting": "Applied via Posting", "open_applicatio
 
 STALE_APPLIED_DAYS = 21
 
-_COMPANY_SUFFIXES = {"bv", "nv", "inc", "llc", "ltd", "corp", "corporation", "gmbh", "co", "company"}
+_COMPANY_SUFFIXES = {"bv", "nv", "inc", "llc", "ltd", "corp", "corporation", "gmbh", "co", "company", "group", "holding", "holdings"}
 
 def get_sheets_service(creds):
     return build("sheets", "v4", credentials=creds)
@@ -180,14 +186,24 @@ def upsert_application(service, spreadsheet_id: str, parsed_email: dict, extract
 
     rows = read_tracker_rows(service, spreadsheet_id)
     target_key = normalize_company_name(extraction.company)
-    matches = [r for r in rows if normalize_company_name(r["company"]) == target_key]
+    company_matches = [r for r in rows if normalize_company_name(r["company"]) == target_key]
 
-    if len(matches) > 1:
-        scored = sorted(matches, key=lambda r: _role_similarity(r["job_title"], extraction.role), reverse=True)
-        if _role_similarity(scored[0]["job_title"], extraction.role) - _role_similarity(scored[1]["job_title"], extraction.role) < 0.15:
-            logger.warning("Ambiguous match for '%s' — skipping automatic update, review manually.", extraction.company)
-            return
-        matches = [scored[0]]
+    # Role similarity is checked even with a single company match — the same
+    # company having only one existing row doesn't mean a new application to
+    # that company is automatically an update to it. Someone applying to two
+    # different roles at once is a real, common case, and matching on
+    # company alone would silently merge two distinct applications.
+    matches = []
+    if company_matches:
+        scored = sorted(company_matches, key=lambda r: _role_similarity(r["job_title"], extraction.role), reverse=True)
+        best_score = _role_similarity(scored[0]["job_title"], extraction.role)
+        if len(scored) > 1:
+            second_score = _role_similarity(scored[1]["job_title"], extraction.role)
+            if best_score > ROLE_MATCH_THRESHOLD and best_score - second_score < 0.15:
+                logger.warning("Ambiguous match for '%s' — skipping automatic update, review manually.", extraction.company)
+                return
+        if best_score > ROLE_MATCH_THRESHOLD:
+            matches = [scored[0]]
 
     source = "open_application" if parsed_email["is_outbound"] else "applied_via_posting"
     note_suffix = " (auto-reply acknowledgment)" if parsed_email.get("is_auto_reply") else ""
